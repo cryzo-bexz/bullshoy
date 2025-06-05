@@ -4,35 +4,54 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Love.exe</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700&display=swap" rel="stylesheet">
+  <!-- Use a bold, modern sci-fi font -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
   <style>
-    html, body {
+    ─── Reset & Base Styles ───────────────────────────────────────────────────
+    * {
       margin: 0;
       padding: 0;
-      overflow: hidden;
+      box-sizing: border-box;
+    }
+    html, body {
+      width: 100%;
       height: 100%;
+      overflow: hidden;
       background: #000;
-      font-family: 'Outfit', sans-serif;
+      font-family: 'Orbitron', sans-serif;
     }
 
+    ─── Canvas Styles ─────────────────────────────────────────────────────────
     canvas {
       position: absolute;
+      top: 0;
+      left: 0;
       width: 100%;
       height: 100%;
       display: block;
     }
 
+    ─── Centered “Love.exe” Styles ──────────────────────────────────────────
     .center-text {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       font-size: 4rem;
-      color: white;
-      font-weight: 700;
-      text-shadow: 0 0 10px rgba(255,255,255,0.2), 0 0 30px rgba(255,255,255,0.1);
+      color: #FFFFFF;
+      /* Strong multi-layer glow */
+      text-shadow:
+        /* White core glow */
+        0 0 8px rgba(255, 255, 255, 0.9),
+        0 0 16px rgba(255, 255, 255, 0.8),
+        /* Pinkish outer glow */
+        0 0 24px #FF00FF,
+        0 0 32px #FF00FF,
+        /* Slight bluish fringe */
+        0 0 48px #00FFFF;
       z-index: 10;
       pointer-events: none;
+      user-select: none;
     }
   </style>
 </head>
@@ -41,80 +60,91 @@
   <div class="center-text">Love.exe</div>
 
   <script>
+    // ─── Canvas Setup ─────────────────────────────────────────────────────────
     const canvas = document.getElementById('bgCanvas');
     const ctx = canvas.getContext('2d');
 
-    const squareSize = 40;
-    const borderColor = '#999';
+    // Grid properties (matching your React code)
+    const squareSize     = 40;
+    const borderColor    = '#999';
     const hoverFillColor = '#222';
-    const direction = 'right';
-    const speed = 1;
+    const direction      = 'right'; // can be 'left', 'up', 'down', or 'diagonal'
+    const speed          = 1;
 
     let gridOffset = { x: 0, y: 0 };
     let hoveredSquare = null;
 
-    function resize() {
-      canvas.width = window.innerWidth;
+    // Resize canvas to fill window
+    function resizeCanvas() {
+      canvas.width  = window.innerWidth;
       canvas.height = window.innerHeight;
     }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
 
-    window.addEventListener('resize', resize);
-    resize();
-
-    canvas.addEventListener('mousemove', (e) => {
+    // Track mouse position & hovered square index
+    canvas.addEventListener('mousemove', e => {
       const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
       hoveredSquare = {
-        x: Math.floor((x + gridOffset.x) / squareSize),
-        y: Math.floor((y + gridOffset.y) / squareSize)
+        x: Math.floor((mx + gridOffset.x) / squareSize),
+        y: Math.floor((my + gridOffset.y) / squareSize)
       };
     });
+    canvas.addEventListener('mouseleave', () => { hoveredSquare = null; });
 
-    canvas.addEventListener('mouseleave', () => {
-      hoveredSquare = null;
-    });
-
+    // Draw the animated grid
     function drawGrid() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const cols = Math.ceil(canvas.width / squareSize) + 1;
+
+      // How many columns/rows needed
+      const cols = Math.ceil(canvas.width  / squareSize) + 1;
       const rows = Math.ceil(canvas.height / squareSize) + 1;
 
+      // Align start positions to gridOffset
       const startX = Math.floor(gridOffset.x / squareSize) * squareSize;
       const startY = Math.floor(gridOffset.y / squareSize) * squareSize;
 
       for (let i = 0; i < cols; i++) {
         for (let j = 0; j < rows; j++) {
-          const x = i * squareSize - (gridOffset.x % squareSize);
-          const y = j * squareSize - (gridOffset.y % squareSize);
+          // Compute pixel positions
+          const px = i * squareSize - (gridOffset.x % squareSize);
+          const py = j * squareSize - (gridOffset.y % squareSize);
 
+          // Fill hovered square
           if (
             hoveredSquare &&
             i === hoveredSquare.x &&
             j === hoveredSquare.y
           ) {
             ctx.fillStyle = hoverFillColor;
-            ctx.fillRect(x, y, squareSize, squareSize);
+            ctx.fillRect(px, py, squareSize, squareSize);
           }
 
+          // Draw border
           ctx.strokeStyle = borderColor;
-          ctx.strokeRect(x, y, squareSize, squareSize);
+          ctx.strokeRect(px, py, squareSize, squareSize);
         }
       }
 
-      const gradient = ctx.createRadialGradient(
+      // Radial gradient overlay (transparent center to dark edges)
+      const grad = ctx.createRadialGradient(
         canvas.width / 2,
         canvas.height / 2,
         0,
         canvas.width / 2,
         canvas.height / 2,
-        Math.sqrt(canvas.width ** 2 + canvas.height ** 2) / 2
+        Math.hypot(canvas.width, canvas.height) / 2
       );
-      gradient.addColorStop(0, "rgba(0, 0, 0, 0)");
-      ctx.fillStyle = gradient;
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      // If you want a darker vignette, uncomment the next line:
+      // grad.addColorStop(1, '#060606');
+      ctx.fillStyle = grad;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    // Animation loop: update offset, then draw
     function animate() {
       const s = Math.max(speed, 0.1);
       switch (direction) {
@@ -135,7 +165,6 @@
           gridOffset.y = (gridOffset.y - s + squareSize) % squareSize;
           break;
       }
-
       drawGrid();
       requestAnimationFrame(animate);
     }
