@@ -2,10 +2,68 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>GSAP SplitText</title>
-    <script type="module" src="main.js"></script>
+    <title>SplitText Demo</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
+    <script src="https://unpkg.com/gsap@3/dist/ScrollTrigger.min.js"></script>
+    <script src="https://unpkg.com/gsap@3/dist/SplitText.min.js"></script>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 50px;
+        text-align: center;
+      }
+      p.split {
+        font-size: 2rem;
+        margin-top: 200px;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+
+    <script>
+      const { useRef, useEffect } = React;
+
+      function SplitText({ text }) {
+        const ref = useRef();
+
+        useEffect(() => {
+          const el = ref.current;
+          const split = new SplitText(el, { type: "chars" });
+          const chars = split.chars;
+
+          gsap.from(chars, {
+            opacity: 0,
+            y: 40,
+            stagger: 0.05,
+            duration: 0.6,
+            ease: "power3.out",
+            scrollTrigger: {
+              trigger: el,
+              start: "top 80%",
+              once: true,
+            },
+          });
+
+          return () => {
+            split.revert();
+          };
+        }, [text]);
+
+        return React.createElement("p", { ref, className: "split" }, text);
+      }
+
+      function App() {
+        return React.createElement("div", null,
+          React.createElement("h1", null, "GSAP SplitText (No Build)"),
+          React.createElement(SplitText, { text: "This is animated text!" })
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(React.createElement(App));
+    </script>
   </body>
 </html>
