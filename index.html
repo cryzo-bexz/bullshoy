@@ -2,21 +2,30 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>SplitText Demo</title>
+    <title>React GSAP Split</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
     <script src="https://unpkg.com/gsap@3/dist/ScrollTrigger.min.js"></script>
-    <script src="https://unpkg.com/gsap@3/dist/SplitText.min.js"></script>
     <style>
       body {
         font-family: sans-serif;
-        padding: 50px;
+        padding: 60px;
+        background: #111;
+        color: #fff;
         text-align: center;
       }
-      p.split {
+
+      .char {
+        display: inline-block;
+        opacity: 0;
+        transform: translateY(40px);
+      }
+
+      .text {
         font-size: 2rem;
-        margin-top: 200px;
+        line-height: 2.5rem;
+        margin-top: 50vh;
       }
     </style>
   </head>
@@ -24,41 +33,43 @@
     <div id="root"></div>
 
     <script>
-      const { useRef, useEffect } = React;
+      const { useEffect, useRef } = React;
 
       function SplitText({ text }) {
-        const ref = useRef();
+        const containerRef = useRef(null);
 
         useEffect(() => {
-          const el = ref.current;
-          const split = new SplitText(el, { type: "chars" });
-          const chars = split.chars;
+          const chars = containerRef.current.querySelectorAll(".char");
 
-          gsap.from(chars, {
-            opacity: 0,
-            y: 40,
+          gsap.to(chars, {
+            y: 0,
+            opacity: 1,
             stagger: 0.05,
             duration: 0.6,
             ease: "power3.out",
             scrollTrigger: {
-              trigger: el,
+              trigger: containerRef.current,
               start: "top 80%",
-              once: true,
+              toggleActions: "play none none none",
             },
           });
-
-          return () => {
-            split.revert();
-          };
         }, [text]);
 
-        return React.createElement("p", { ref, className: "split" }, text);
+        const splitChars = text.split("").map((char, i) =>
+          React.createElement("span", { key: i, className: "char" }, char)
+        );
+
+        return React.createElement(
+          "p",
+          { className: "text", ref: containerRef },
+          splitChars
+        );
       }
 
       function App() {
         return React.createElement("div", null,
-          React.createElement("h1", null, "GSAP SplitText (No Build)"),
-          React.createElement(SplitText, { text: "This is animated text!" })
+          React.createElement("h1", null, "GSAP SplitText (Free Version)"),
+          React.createElement(SplitText, { text: "Hyper is unstoppable 💥" })
         );
       }
 
