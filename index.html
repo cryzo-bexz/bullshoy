@@ -2,30 +2,54 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>React GSAP Split</title>
+    <title>SplitText + ClickSpark Demo</title>
+    <!-- React & ReactDOM via CDN -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- GSAP Core + ScrollTrigger via CDN -->
     <script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
     <script src="https://unpkg.com/gsap@3/dist/ScrollTrigger.min.js"></script>
     <style>
+      /* Full‐window black background */
+      html,
       body {
-        font-family: sans-serif;
-        padding: 60px;
-        background: #111;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #000;
         color: #fff;
-        text-align: center;
+        overflow: hidden;
       }
-
+      #root {
+        width: 100%;
+        height: 100%;
+      }
+      /* Styles for individual characters */
       .char {
         display: inline-block;
         opacity: 0;
         transform: translateY(40px);
       }
-
       .text {
         font-size: 2rem;
         line-height: 2.5rem;
-        margin-top: 50vh;
+        margin-top: 50vh; /* so you can scroll a bit */
+      }
+      /* ClickSpark canvas should fill its parent */
+      .spark-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+      /* Container that wraps everything */
+      .full-screen-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
       }
     </style>
   </head>
@@ -33,14 +57,21 @@
     <div id="root"></div>
 
     <script>
-      const { useEffect, useRef } = React;
+      const { useRef, useEffect, useCallback } = React;
+      const { createRoot } = ReactDOM;
 
+      /**********************
+       * SplitText Component
+       * (DIY version—splits text into spans)
+       **********************/
       function SplitText({ text }) {
         const containerRef = useRef(null);
 
         useEffect(() => {
+          // Collect all .char elements inside this component
           const chars = containerRef.current.querySelectorAll(".char");
 
+          // Animate with GSAP when scrolled into view
           gsap.to(chars, {
             y: 0,
             opacity: 1,
@@ -55,8 +86,9 @@
           });
         }, [text]);
 
-        const splitChars = text.split("").map((char, i) =>
-          React.createElement("span", { key: i, className: "char" }, char)
+        // Split the string into individual <span class="char"> elements
+        const splitChars = text.split("").map((char, idx) =>
+          React.createElement("span", { key: idx, className: "char" }, char)
         );
 
         return React.createElement(
@@ -66,14 +98,211 @@
         );
       }
 
-      function App() {
-        return React.createElement("div", null,
-          React.createElement("h1", null, "GSAP SplitText (Free Version)"),
-          React.createElement(SplitText, { text: "Hyper is unstoppable 💥" })
+      /**********************
+       * ClickSpark Component
+       * (Canvas‐based spark effect on click)
+       **********************/
+      function ClickSpark({
+        sparkColor = "#fff",
+        sparkSize = 10,
+        sparkRadius = 15,
+        sparkCount = 8,
+        duration = 400,
+        easing = "ease-out",
+        extraScale = 1.0,
+        children,
+      }) {
+        const canvasRef = useRef(null);
+        const sparksRef = useRef([]);
+        const startTimeRef = useRef(null);
+
+        // Resize canvas to match parent dimensions
+        useEffect(() => {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          const parent = canvas.parentElement;
+          if (!parent) return;
+
+          let resizeTimeout;
+          const resizeCanvas = () => {
+            const { width, height } = parent.getBoundingClientRect();
+            if (canvas.width !== width || canvas.height !== height) {
+              canvas.width = width;
+              canvas.height = height;
+            }
+          };
+          const handleResize = () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(resizeCanvas, 100);
+          };
+
+          const ro = new ResizeObserver(handleResize);
+          ro.observe(parent);
+          resizeCanvas();
+
+          return () => {
+            ro.disconnect();
+            clearTimeout(resizeTimeout);
+          };
+        }, []);
+
+        // Easing function
+        const easeFunc = useCallback(
+          (t) => {
+            switch (easing) {
+              case "linear":
+                return t;
+              case "ease-in":
+                return t * t;
+              case "ease-in-out":
+                return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+              default:
+                return t * (2 - t);
+            }
+          },
+          [easing]
+        );
+
+        // Drawing loop: draw and update sparks each frame
+        useEffect(() => {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          const ctx = canvas.getContext("2d");
+          let animationId;
+
+          const draw = (timestamp) => {
+            if (!startTimeRef.current) {
+              startTimeRef.current = timestamp;
+            }
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            sparksRef.current = sparksRef.current.filter((spark) => {
+              const elapsed = timestamp - spark.startTime;
+              if (elapsed >= duration) {
+                return false;
+              }
+              const progress = elapsed / duration;
+              const eased = easeFunc(progress);
+              const distance = eased * sparkRadius * extraScale;
+              const lineLength = sparkSize * (1 - eased);
+
+              const x1 = spark.x + distance * Math.cos(spark.angle);
+              const y1 = spark.y + distance * Math.sin(spark.angle);
+              const x2 =
+                spark.x + (distance + lineLength) * Math.cos(spark.angle);
+              const y2 =
+                spark.y + (distance + lineLength) * Math.sin(spark.angle);
+
+              ctx.strokeStyle = sparkColor;
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(x1, y1);
+              ctx.lineTo(x2, y2);
+              ctx.stroke();
+
+              return true;
+            });
+
+            animationId = requestAnimationFrame(draw);
+          };
+
+          animationId = requestAnimationFrame(draw);
+          return () => cancelAnimationFrame(animationId);
+        }, [
+          sparkColor,
+          sparkSize,
+          sparkRadius,
+          sparkCount,
+          duration,
+          easeFunc,
+          extraScale,
+        ]);
+
+        // On click: generate new sparks at mouse position
+        const handleClick = (e) => {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          const rect = canvas.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          const now = performance.now();
+
+          const newSparks = Array.from({ length: sparkCount }, (_, i) => ({
+            x,
+            y,
+            angle: (2 * Math.PI * i) / sparkCount,
+            startTime: now,
+          }));
+          sparksRef.current.push(...newSparks);
+        };
+
+        return React.createElement(
+          "div",
+          {
+            style: {
+              position: "relative",
+              width: "100%",
+              height: "100%",
+              overflow: "hidden",
+            },
+            onClick: handleClick,
+          },
+          React.createElement("canvas", {
+            ref: canvasRef,
+            className: "spark-canvas",
+          }),
+          children
         );
       }
 
-      const root = ReactDOM.createRoot(document.getElementById("root"));
+      /**********************
+       * App Component
+       **********************/
+      function App() {
+        return React.createElement(
+          "div",
+          { className: "full-screen-container" },
+          // Wrap everything in ClickSpark to catch clicks
+          React.createElement(
+            ClickSpark,
+            {
+              sparkColor: "#ff416c",
+              sparkSize: 8,
+              sparkRadius: 20,
+              sparkCount: 10,
+              duration: 600,
+              easing: "ease-out",
+              extraScale: 1.2,
+            },
+            // Centered container for SplitText
+            React.createElement(
+              "div",
+              {
+                style: {
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  width: "80%",
+                },
+              },
+              React.createElement(
+                "h1",
+                { style: { marginBottom: "1rem", fontSize: "2.5rem" } },
+                "Click anywhere for sparks"
+              ),
+              React.createElement(SplitText, {
+                text: "Hyper’s Black Canvas 🔥",
+              })
+            )
+          )
+        );
+      }
+
+      /**********************
+       * Render to DOM
+       **********************/
+      const root = createRoot(document.getElementById("root"));
       root.render(React.createElement(App));
     </script>
   </body>
