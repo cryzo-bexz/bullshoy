@@ -11,7 +11,6 @@
       overflow: hidden;
       height: 100%;
       background: black;
-      font-family: 'Orbitron', sans-serif;
     }
 
     .balatro-container {
@@ -20,30 +19,24 @@
       height: 100%;
     }
 
-    .glow-text {
+    .center-img {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 5rem;
-      color: white;
-      text-align: center;
-      white-space: nowrap;
+      width: 180px;
+      filter:
+        drop-shadow(0 0 10px #fff)
+        drop-shadow(0 0 25px #ffaaaa)
+        drop-shadow(0 0 40px #aa4444);
       z-index: 10;
       pointer-events: none;
-      text-shadow:
-        0 0 8px #fff,
-        0 0 16px #fff,
-        0 0 24px #f0f,
-        0 0 32px #f0f,
-        0 0 48px #0ff;
     }
   </style>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="balatro-container">
-    <div class="glow-text">Love.exe</div>
+    <img class="center-img" src="https://i.postimg.cc/T3Jr8708/1000061239-removebg-preview.png" alt="Heart" />
   </div>
 
   <script type="module">
