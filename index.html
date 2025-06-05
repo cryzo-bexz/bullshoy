@@ -1,24 +1,18 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Love.exe</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700&display=swap" rel="stylesheet">
   <style>
-    * {
+    html, body {
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
-    }
-
-    html, body {
-      width: 100%;
-      height: 100%;
       overflow: hidden;
+      height: 100%;
       background: #000;
-      font-family: 'Orbitron', sans-serif;
+      font-family: 'Outfit', sans-serif;
     }
 
     canvas {
@@ -33,75 +27,78 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      color: white;
       font-size: 4rem;
-      text-shadow: 0 0 10px #f0f, 0 0 20px #0ff;
-      z-index: 2;
-      user-select: none;
+      color: white;
+      font-weight: 700;
+      text-shadow: 0 0 10px rgba(255,255,255,0.2), 0 0 30px rgba(255,255,255,0.1);
+      z-index: 10;
       pointer-events: none;
     }
   </style>
 </head>
 <body>
-  <canvas id="gridCanvas"></canvas>
+  <canvas id="bgCanvas"></canvas>
   <div class="center-text">Love.exe</div>
 
   <script>
-    const canvas = document.getElementById("gridCanvas");
-    const ctx = canvas.getContext("2d");
+    const canvas = document.getElementById('bgCanvas');
+    const ctx = canvas.getContext('2d');
 
     const squareSize = 40;
+    const borderColor = '#999';
+    const hoverFillColor = '#222';
+    const direction = 'right';
     const speed = 1;
-    const borderColor = "#999";
-    const hoverFillColor = "#222";
-    const direction = "right"; // changeable
 
-    const gridOffset = { x: 0, y: 0 };
+    let gridOffset = { x: 0, y: 0 };
     let hoveredSquare = null;
 
-    function resizeCanvas() {
+    function resize() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     }
 
-    window.addEventListener("resize", resizeCanvas);
-    resizeCanvas();
+    window.addEventListener('resize', resize);
+    resize();
 
-    canvas.addEventListener("mousemove", (e) => {
+    canvas.addEventListener('mousemove', (e) => {
       const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
       hoveredSquare = {
-        x: Math.floor((mouseX + gridOffset.x) / squareSize),
-        y: Math.floor((mouseY + gridOffset.y) / squareSize)
+        x: Math.floor((x + gridOffset.x) / squareSize),
+        y: Math.floor((y + gridOffset.y) / squareSize)
       };
     });
 
-    canvas.addEventListener("mouseleave", () => {
+    canvas.addEventListener('mouseleave', () => {
       hoveredSquare = null;
     });
 
     function drawGrid() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const cols = Math.ceil(canvas.width / squareSize) + 1;
+      const rows = Math.ceil(canvas.height / squareSize) + 1;
 
       const startX = Math.floor(gridOffset.x / squareSize) * squareSize;
       const startY = Math.floor(gridOffset.y / squareSize) * squareSize;
 
-      for (let x = startX; x < canvas.width + squareSize; x += squareSize) {
-        for (let y = startY; y < canvas.height + squareSize; y += squareSize) {
-          const drawX = x - (gridOffset.x % squareSize);
-          const drawY = y - (gridOffset.y % squareSize);
+      for (let i = 0; i < cols; i++) {
+        for (let j = 0; j < rows; j++) {
+          const x = i * squareSize - (gridOffset.x % squareSize);
+          const y = j * squareSize - (gridOffset.y % squareSize);
 
-          if (hoveredSquare && 
-              Math.floor(x / squareSize) === hoveredSquare.x &&
-              Math.floor(y / squareSize) === hoveredSquare.y) {
+          if (
+            hoveredSquare &&
+            i === hoveredSquare.x &&
+            j === hoveredSquare.y
+          ) {
             ctx.fillStyle = hoverFillColor;
-            ctx.fillRect(drawX, drawY, squareSize, squareSize);
+            ctx.fillRect(x, y, squareSize, squareSize);
           }
 
           ctx.strokeStyle = borderColor;
-          ctx.strokeRect(drawX, drawY, squareSize, squareSize);
+          ctx.strokeRect(x, y, squareSize, squareSize);
         }
       }
 
@@ -113,29 +110,29 @@
         canvas.height / 2,
         Math.sqrt(canvas.width ** 2 + canvas.height ** 2) / 2
       );
-      gradient.addColorStop(0, "rgba(0,0,0,0)");
+      gradient.addColorStop(0, "rgba(0, 0, 0, 0)");
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
     function animate() {
-      const effectiveSpeed = Math.max(speed, 0.1);
+      const s = Math.max(speed, 0.1);
       switch (direction) {
-        case "right":
-          gridOffset.x = (gridOffset.x - effectiveSpeed + squareSize) % squareSize;
+        case 'right':
+          gridOffset.x = (gridOffset.x - s + squareSize) % squareSize;
           break;
-        case "left":
-          gridOffset.x = (gridOffset.x + effectiveSpeed + squareSize) % squareSize;
+        case 'left':
+          gridOffset.x = (gridOffset.x + s + squareSize) % squareSize;
           break;
-        case "up":
-          gridOffset.y = (gridOffset.y + effectiveSpeed + squareSize) % squareSize;
+        case 'up':
+          gridOffset.y = (gridOffset.y + s + squareSize) % squareSize;
           break;
-        case "down":
-          gridOffset.y = (gridOffset.y - effectiveSpeed + squareSize) % squareSize;
+        case 'down':
+          gridOffset.y = (gridOffset.y - s + squareSize) % squareSize;
           break;
-        case "diagonal":
-          gridOffset.x = (gridOffset.x - effectiveSpeed + squareSize) % squareSize;
-          gridOffset.y = (gridOffset.y - effectiveSpeed + squareSize) % squareSize;
+        case 'diagonal':
+          gridOffset.x = (gridOffset.x - s + squareSize) % squareSize;
+          gridOffset.y = (gridOffset.y - s + squareSize) % squareSize;
           break;
       }
 
