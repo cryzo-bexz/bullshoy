@@ -4,172 +4,166 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Love.exe</title>
-  <!-- Use a bold, modern sci-fi font -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
   <style>
-    ─── Reset & Base Styles ───────────────────────────────────────────────────
-    * {
+    html, body {
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
-    }
-    html, body {
-      width: 100%;
-      height: 100%;
       overflow: hidden;
-      background: #000;
+      height: 100%;
+      background: black;
       font-family: 'Orbitron', sans-serif;
     }
 
-    ─── Canvas Styles ─────────────────────────────────────────────────────────
-    canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
+    .balatro-container {
+      position: relative;
       width: 100%;
       height: 100%;
-      display: block;
     }
 
-    ─── Centered “Love.exe” Styles ──────────────────────────────────────────
-    .center-text {
+    .glow-text {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 4rem;
-      color: #FFFFFF;
-      /* Strong multi-layer glow */
-      text-shadow:
-        /* White core glow */
-        0 0 8px rgba(255, 255, 255, 0.9),
-        0 0 16px rgba(255, 255, 255, 0.8),
-        /* Pinkish outer glow */
-        0 0 24px #FF00FF,
-        0 0 32px #FF00FF,
-        /* Slight bluish fringe */
-        0 0 48px #00FFFF;
+      font-size: 5rem;
+      color: white;
+      text-align: center;
+      white-space: nowrap;
       z-index: 10;
       pointer-events: none;
-      user-select: none;
+      text-shadow:
+        0 0 8px #fff,
+        0 0 16px #fff,
+        0 0 24px #f0f,
+        0 0 32px #f0f,
+        0 0 48px #0ff;
     }
   </style>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <canvas id="bgCanvas"></canvas>
-  <div class="center-text">Love.exe</div>
+  <div class="balatro-container">
+    <div class="glow-text">Love.exe</div>
+  </div>
 
-  <script>
-    // ─── Canvas Setup ─────────────────────────────────────────────────────────
-    const canvas = document.getElementById('bgCanvas');
-    const ctx = canvas.getContext('2d');
+  <script type="module">
+    import { Renderer, Program, Mesh, Triangle } from "https://cdn.skypack.dev/ogl";
 
-    // Grid properties (matching your React code)
-    const squareSize     = 40;
-    const borderColor    = '#999';
-    const hoverFillColor = '#222';
-    const direction      = 'right'; // can be 'left', 'up', 'down', or 'diagonal'
-    const speed          = 1;
+    const vertexShader = `attribute vec2 uv;
+    attribute vec2 position;
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = vec4(position, 0, 1);
+    }`;
 
-    let gridOffset = { x: 0, y: 0 };
-    let hoveredSquare = null;
+    const fragmentShader = `precision highp float;
+    #define PI 3.14159265359
+    uniform float iTime;
+    uniform vec3 iResolution;
+    uniform float uSpinRotation;
+    uniform float uSpinSpeed;
+    uniform vec2 uOffset;
+    uniform vec4 uColor1;
+    uniform vec4 uColor2;
+    uniform vec4 uColor3;
+    uniform float uContrast;
+    uniform float uLighting;
+    uniform float uSpinAmount;
+    uniform float uPixelFilter;
+    uniform float uSpinEase;
+    uniform bool uIsRotate;
+    uniform vec2 uMouse;
+    varying vec2 vUv;
 
-    // Resize canvas to fill window
-    function resizeCanvas() {
-      canvas.width  = window.innerWidth;
-      canvas.height = window.innerHeight;
+    vec4 effect(vec2 screenSize, vec2 screen_coords) {
+      float pixel_size = length(screenSize.xy) / uPixelFilter;
+      vec2 uv = (floor(screen_coords.xy * (1.0 / pixel_size)) * pixel_size - 0.5 * screenSize.xy) / length(screenSize.xy) - uOffset;
+      float uv_len = length(uv);
+      float speed = (uSpinRotation * uSpinEase * 0.2);
+      if(uIsRotate){ speed = iTime * speed; }
+      speed += 302.2;
+      float mouseInfluence = (uMouse.x * 2.0 - 1.0);
+      speed += mouseInfluence * 0.1;
+      float new_pixel_angle = atan(uv.y, uv.x) + speed - uSpinEase * 20.0 * (uSpinAmount * uv_len + (1.0 - uSpinAmount));
+      vec2 mid = (screenSize.xy / length(screenSize.xy)) / 2.0;
+      uv = (vec2(uv_len * cos(new_pixel_angle) + mid.x, uv_len * sin(new_pixel_angle) + mid.y) - mid);
+      uv *= 30.0;
+      float baseSpeed = iTime * uSpinSpeed;
+      speed = baseSpeed + mouseInfluence * 2.0;
+      vec2 uv2 = vec2(uv.x + uv.y);
+      for(int i = 0; i < 5; i++) {
+        uv2 += sin(max(uv.x, uv.y)) + uv;
+        uv += 0.5 * vec2(
+            cos(5.1123314 + 0.353 * uv2.y + speed * 0.131121),
+            sin(uv2.x - 0.113 * speed)
+        );
+        uv -= cos(uv.x + uv.y) - sin(uv.x * 0.711 - uv.y);
+      }
+      float contrast_mod = (0.25 * uContrast + 0.5 * uSpinAmount + 1.2);
+      float paint_res = min(2.0, max(0.0, length(uv) * 0.035 * contrast_mod));
+      float c1p = max(0.0, 1.0 - contrast_mod * abs(1.0 - paint_res));
+      float c2p = max(0.0, 1.0 - contrast_mod * abs(paint_res));
+      float c3p = 1.0 - min(1.0, c1p + c2p);
+      float light = (uLighting - 0.2) * max(c1p * 5.0 - 4.0, 0.0) + uLighting * max(c2p * 5.0 - 4.0, 0.0);
+      return (0.3 / uContrast) * uColor1 + (1.0 - 0.3 / uContrast) * (uColor1 * c1p + uColor2 * c2p + vec4(c3p * uColor3.rgb, c3p * uColor1.a)) + light;
     }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
 
-    // Track mouse position & hovered square index
-    canvas.addEventListener('mousemove', e => {
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-      hoveredSquare = {
-        x: Math.floor((mx + gridOffset.x) / squareSize),
-        y: Math.floor((my + gridOffset.y) / squareSize)
-      };
+    void main() {
+      vec2 uv = vUv * iResolution.xy;
+      gl_FragColor = effect(iResolution.xy, uv);
+    }`;
+
+    const container = document.querySelector('.balatro-container');
+    const renderer = new Renderer();
+    const gl = renderer.gl;
+    container.appendChild(gl.canvas);
+
+    const program = new Program(gl, {
+      vertex: vertexShader,
+      fragment: fragmentShader,
+      uniforms: {
+        iTime: { value: 0 },
+        iResolution: { value: [gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height] },
+        uSpinRotation: { value: -2.0 },
+        uSpinSpeed: { value: 7.0 },
+        uOffset: { value: [0.0, 0.0] },
+        uColor1: { value: [0.87, 0.27, 0.23, 1.0] }, // #DE443B
+        uColor2: { value: [0.0, 0.42, 0.71, 1.0] }, // #006BB4
+        uColor3: { value: [0.09, 0.14, 0.15, 1.0] }, // #162325
+        uContrast: { value: 3.5 },
+        uLighting: { value: 0.4 },
+        uSpinAmount: { value: 0.25 },
+        uPixelFilter: { value: 745.0 },
+        uSpinEase: { value: 1.0 },
+        uIsRotate: { value: false },
+        uMouse: { value: [0.5, 0.5] }
+      }
     });
-    canvas.addEventListener('mouseleave', () => { hoveredSquare = null; });
 
-    // Draw the animated grid
-    function drawGrid() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const geometry = new Triangle(gl);
+    const mesh = new Mesh(gl, { geometry, program });
 
-      // How many columns/rows needed
-      const cols = Math.ceil(canvas.width  / squareSize) + 1;
-      const rows = Math.ceil(canvas.height / squareSize) + 1;
-
-      // Align start positions to gridOffset
-      const startX = Math.floor(gridOffset.x / squareSize) * squareSize;
-      const startY = Math.floor(gridOffset.y / squareSize) * squareSize;
-
-      for (let i = 0; i < cols; i++) {
-        for (let j = 0; j < rows; j++) {
-          // Compute pixel positions
-          const px = i * squareSize - (gridOffset.x % squareSize);
-          const py = j * squareSize - (gridOffset.y % squareSize);
-
-          // Fill hovered square
-          if (
-            hoveredSquare &&
-            i === hoveredSquare.x &&
-            j === hoveredSquare.y
-          ) {
-            ctx.fillStyle = hoverFillColor;
-            ctx.fillRect(px, py, squareSize, squareSize);
-          }
-
-          // Draw border
-          ctx.strokeStyle = borderColor;
-          ctx.strokeRect(px, py, squareSize, squareSize);
-        }
-      }
-
-      // Radial gradient overlay (transparent center to dark edges)
-      const grad = ctx.createRadialGradient(
-        canvas.width / 2,
-        canvas.height / 2,
-        0,
-        canvas.width / 2,
-        canvas.height / 2,
-        Math.hypot(canvas.width, canvas.height) / 2
-      );
-      grad.addColorStop(0, 'rgba(0,0,0,0)');
-      // If you want a darker vignette, uncomment the next line:
-      // grad.addColorStop(1, '#060606');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    function resize() {
+      renderer.setSize(container.offsetWidth, container.offsetHeight);
+      program.uniforms.iResolution.value = [gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height];
     }
+    window.addEventListener('resize', resize);
+    resize();
 
-    // Animation loop: update offset, then draw
-    function animate() {
-      const s = Math.max(speed, 0.1);
-      switch (direction) {
-        case 'right':
-          gridOffset.x = (gridOffset.x - s + squareSize) % squareSize;
-          break;
-        case 'left':
-          gridOffset.x = (gridOffset.x + s + squareSize) % squareSize;
-          break;
-        case 'up':
-          gridOffset.y = (gridOffset.y + s + squareSize) % squareSize;
-          break;
-        case 'down':
-          gridOffset.y = (gridOffset.y - s + squareSize) % squareSize;
-          break;
-        case 'diagonal':
-          gridOffset.x = (gridOffset.x - s + squareSize) % squareSize;
-          gridOffset.y = (gridOffset.y - s + squareSize) % squareSize;
-          break;
-      }
-      drawGrid();
-      requestAnimationFrame(animate);
+    function update(t) {
+      requestAnimationFrame(update);
+      program.uniforms.iTime.value = t * 0.001;
+      renderer.render({ scene: mesh });
     }
+    requestAnimationFrame(update);
 
-    animate();
+    container.addEventListener("mousemove", e => {
+      const rect = container.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = 1.0 - (e.clientY - rect.top) / rect.height;
+      program.uniforms.uMouse.value = [x, y];
+    });
   </script>
 </body>
 </html>
